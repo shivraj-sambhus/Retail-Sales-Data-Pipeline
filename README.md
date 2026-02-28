@@ -16,7 +16,43 @@ The given data is a set of daily retail sales of 10 grocery stores in LA. These 
 
 Next, I used weather data from the OpenWeatherMap API for each day in LA and combined them in one dataset using the following FOR loop. The API key I used has since been deactivated and deleted.
 
-<img width="1474" height="838" alt="image" src="https://github.com/user-attachments/assets/a21bc153-d459-48a8-8235-68465ecba201" />
+```
+# A list of weather data to be populated by the FOR loop below
+weather_data = []
+
+# Cleaning up the date column from the sales dataframe
+dates = sales_df.date.sort_values().dropna().unique()
+
+for date in dates:
+    # The unix timestamp for each day of the month
+    unix_timestamp = int(pd.Timestamp(date).timestamp()) 
+    # The OpenWeatherMap API from which we pull the weather at each day
+    url = f"https://api.openweathermap.org/data/3.0/onecall/timemachine?lat=34.0522&lon=-118.2437&dt={unix_timestamp}&appid={API_KEY}&units=imperial"
+    
+    # The weather data itself for the date
+    response = requests.get(url)
+    
+    # Conditional loop that populates the weather_data list
+    if response.status_code == 200:
+        data = response.json()
+        day_weather = {
+            "date": pd.to_datetime(date).date(),
+            "temp": data["data"][0]["temp"],
+            "humidity": data["data"][0]["humidity"],
+            "weather_main": data["data"][0]["weather"][0]["main"],
+            "weather_desc": data["data"][0]["weather"][0]["description"]
+        }
+        weather_data.append(day_weather)
+        print(f"Collected data for: {pd.to_datetime(date).date()}")
+    else: 
+        print(f"Failed to fetch data for {date}: {response.status_code}")
+    
+    # Respecting the API rate limit
+    time.sleep(1) 
+
+# The final dataframe
+weather_df = pd.DataFrame(weather_data)
+```
 
 <img width="737" height="46" alt="image" src="https://github.com/user-attachments/assets/4a99c80d-f978-4e4f-8dc5-09205ef91be9" />
 
@@ -30,8 +66,9 @@ In the transform phase, I performed basic data cleaning in Pandas such as droppi
 
 In the load phase, I created a SQL database from the merged dataframe and created a sample query as listed in the image below. I plan on using this database in an upcoming dashboard project.
 
-<img width="855" height="33" alt="image" src="https://github.com/user-attachments/assets/88ba67c2-bd24-45fe-a9af-d389ab138fda" />
-
+```
+pd.read_sql("SELECT * FROM Sales WHERE store_zip=90004 AND temp > 65", con=conn)
+```
 <img width="1331" height="312" alt="image" src="https://github.com/user-attachments/assets/b69fbd4e-60f6-4bda-a0ef-68d5e59b6510" />
 
 <img width="737" height="46" alt="image" src="https://github.com/user-attachments/assets/3e08c844-4557-468e-a42d-a3f547cb5759" />
